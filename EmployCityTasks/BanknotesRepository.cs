@@ -24,7 +24,8 @@
         {
             if (amount < 0)
             {
-                throw new ArgumentException("Can't remove negative value");
+                result = new List<(int, int)>();
+                return false;
             }
 
             if (amount > TotalAmountOfMoney || Money.Keys.Count == 0)
