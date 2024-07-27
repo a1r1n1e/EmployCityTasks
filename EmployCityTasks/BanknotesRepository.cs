@@ -112,11 +112,11 @@
 
                         if (value <= 0)
                         {
-                            throw new ArgumentException("Negative banknote value");
+                            throw new ArgumentException("Non-positive banknote value");
                         }
                         if (amount <= 0)
                         {
-                            throw new ArgumentException("Negative banknote amount");
+                            throw new ArgumentException("Non-positive banknote amount");
                         }
 
                         if (!result.ContainsKey(value))
