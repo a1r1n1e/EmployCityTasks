@@ -20,74 +20,108 @@
                 TotalAmountOfMoney += key * Money[key];
             }
         }
-        internal static bool TryRemoveAmount(int amount, out IEnumerable<(int value, int amount)> result)
+        internal static bool TryGetMoney(int moneyToRemove, out IEnumerable<(int value, int amount)> result)
         {
-            if (amount < 0)
+            if (moneyToRemove < 0)
             {
                 result = new List<(int, int)>();
                 return false;
             }
 
-            if (amount > TotalAmountOfMoney || Money.Keys.Count == 0)
+            if (moneyToRemove > TotalAmountOfMoney || Money.Keys.Count == 0)
             {
                 result = new List<(int, int)>();
                 return false;
             }
 
-            int restingSum = amount;
-
-            var stack = new Stack<(List<(int value, int amount)> usedBanknotes, int restingSum, int iterValueIndex, int iterAmount)>();
-            List<(int value, int amount)> prevUsedBanknotes;
-            var orderedKeys = Money.Keys.Order().ToList();
-
-            var minKeyIndex = 0;
-            var minKey = orderedKeys[minKeyIndex];
-            for (int banknoteAmount = Money[minKey]; banknoteAmount >= 0; --banknoteAmount)
+            int currentSum = 0;
+            var currentUsed = new Dictionary<int, int>();
+            foreach (var key in Money.Keys)
             {
-                var tempRestingSum = restingSum - banknoteAmount * minKey;
-                prevUsedBanknotes = new List<(int value, int amount)>();
-                prevUsedBanknotes.Add((minKey, banknoteAmount));
-                stack.Push((prevUsedBanknotes, tempRestingSum, minKeyIndex, banknoteAmount));
+                currentUsed.Add(key, Money[key]);
+                currentSum += key * Money[key];
             }
-            
-            while(stack.Count > 0)
+
+            var sortedMoneyKeys = Money.Keys.OrderDescending().ToArray();
+
+            int curValueIndex = sortedMoneyKeys.Length - 1;
+            while(curValueIndex >= 0)
             {
-                var data = stack.Pop();
-                if (data.restingSum > 0)
+                var sourceValue = sortedMoneyKeys[curValueIndex];
+                var curAmount = currentUsed[sourceValue];
+                if (curAmount == 0)
                 {
-                    List<(int value, int amount)> curUsedBanknotes;
-                    if (data.iterValueIndex < orderedKeys.Count - 1)
+                    result = new List<(int, int)>();
+                    return false;
+                }
+                while (curAmount >= 0)
+                {
+                    if (currentSum > moneyToRemove)
                     {
-                        int nextBanknoteValue = orderedKeys[data.iterValueIndex + 1];
-                        for (int nextBanknoteAmount = Money[nextBanknoteValue]; nextBanknoteAmount >= 0; --nextBanknoteAmount)
+                        --curAmount;
+                        if (curAmount >= 0)
                         {
-                            curUsedBanknotes = new List<(int value, int amount)>(data.usedBanknotes);
-                            curUsedBanknotes.Add((nextBanknoteValue, nextBanknoteAmount));
-                            restingSum = data.restingSum - nextBanknoteValue * nextBanknoteAmount;
-                            stack.Push((curUsedBanknotes, restingSum, data.iterValueIndex + 1, nextBanknoteAmount));
+                            currentUsed[sourceValue] = curAmount;
+                            currentSum -= sourceValue;
                         }
                     }
-                }
-                else if (data.restingSum == 0)
-                {
-                    result = data.usedBanknotes.Where(x => x.amount > 0).ToList();
-                    stack.Clear();
-
-                    foreach(var elem in result)
+                    else if (currentSum == moneyToRemove)
                     {
-                        Money[elem.value] -= elem.amount;
-                        TotalAmountOfMoney -= elem.amount;
-                        if (Money[elem.value] == 0)
+                        result = currentUsed.Select(x => (x.Key, x.Value)).Where(x => x.Value != 0).ToList();
+                        foreach (var elem in result)
                         {
-                            Money.Remove(elem.value);
+                            Money[elem.value] -= elem.amount;
+                            if (Money[elem.value] == 0)
+                            {
+                                Money.Remove(elem.value);
+                            }
                         }
+                        return true;
                     }
+                    else
+                    {
+                        if (curValueIndex == sortedMoneyKeys.Length -1)
+                        {
+                            break;
+                        }
+                        ReAddRest(sourceDict: Money, orderedSourceKeys: sortedMoneyKeys, tempDict: currentUsed, decreasedKeyIndex: curValueIndex);
+                        for(int tmpIndex = curValueIndex + 1; tmpIndex < sortedMoneyKeys.Length; ++ tmpIndex)
+                        {
+                            var tmpValue = sortedMoneyKeys[tmpIndex];
+                            currentSum += tmpValue * currentUsed[tmpValue];
+                        }
 
-                    return true;
+                        curValueIndex = sortedMoneyKeys.Length - 1;
+                        sourceValue = sortedMoneyKeys[curValueIndex];
+                        curAmount = currentUsed[sourceValue];
+                    }
                 }
+                --curValueIndex;
             }
+
             result = new List<(int, int)>();
             return false;
+        }
+
+        private static void ReAddRest(Dictionary<int, int> sourceDict, int[] orderedSourceKeys, Dictionary<int, int> tempDict, int decreasedKeyIndex)
+        {
+            for (int keyToReAddIndex = decreasedKeyIndex + 1; keyToReAddIndex < orderedSourceKeys.Length; ++keyToReAddIndex)
+            {
+                var key = orderedSourceKeys[keyToReAddIndex];
+                tempDict[key] = sourceDict[key];
+            }
+        }
+
+        private static int CalculateTotal(Dictionary<int, int> amountsByValues)
+        {
+            int result = 0;
+
+            foreach (var elem in amountsByValues)
+            {
+                result += elem.Key * elem.Value;
+            }
+
+            return result;
         }
 
         internal static Dictionary<int, int> GetStoredMoneyAmounts()

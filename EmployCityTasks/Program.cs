@@ -37,7 +37,7 @@
 
 
                 IEnumerable<(int value, int amount)> result;
-                bool isSuccess = BanknotesRepository.TryRemoveAmount(amount: sumToRemove, result: out result);
+                bool isSuccess = BanknotesRepository.TryGetMoney(moneyToRemove: sumToRemove, result: out result);
 
                 if (isSuccess)
                 {
